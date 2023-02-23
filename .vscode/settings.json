@@ -49,4 +49,5 @@
         "cstring": "cpp"
     },
     "C_Cpp.errorSquiggles": "Disabled",
+    "editor.minimap.renderCharacters": false,
 }
