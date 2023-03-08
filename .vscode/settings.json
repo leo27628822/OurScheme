@@ -46,7 +46,13 @@
         "stdexcept": "cpp",
         "streambuf": "cpp",
         "typeinfo": "cpp",
-        "cstring": "cpp"
+        "cstring": "cpp",
+        "list": "cpp",
+        "ios": "cpp",
+        "xhash": "cpp",
+        "xiosbase": "cpp",
+        "xstring": "cpp",
+        "xtree": "cpp"
     },
     "C_Cpp.errorSquiggles": "Disabled",
     "editor.minimap.renderCharacters": false,

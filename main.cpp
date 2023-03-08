@@ -14,175 +14,189 @@
 
 using namespace std;
 
-int gTestNum = 0, gLine = 0, gColumn = 0 ;
-bool gEOF = false ;
+int gTestNum = 0, gRow = 0, gCol = 0 ;
+bool gEOF = false, gExit = false ;
 
-enum TokenType {
-  EMPTY, NIL, INT, FLOAT, DOT, T, STRING, SHARP,
-  OPERATOR, LEFT_PARENTHESIS, RIGHT_PARENTHESIS, SYMBOL,
-  CONS, LIST, QUOTE, DEFINE, CAR, CDR, ISPAIR, ISLIST, ISATOM, ISNULL,
-  ISINT, ISREAL, ISNUM, ISSTR, ISBOOL, ISSYM, ADD, SUB, MULT, DIV,
-  NOT, AND, OR, BIGG, BIGEQ, SML, SMLEQ, EQ, STRAPP, STRBIG,
-  STRSML, STREQL, ISEQV, ISEQL, BEGIN, IF, COND, LET, LAMBDA, PRINT, READ,
-  WRITE, EVAL, DSPSTR, NEWLINE, SYMTOSTR, NUMTOSTR, SET, CEATEOBJ, ISERROBJ,
-  VERBOS, ISVERBOS, EXIT, CLEAN, USRFUNC, ERROBJ
+enum Token_Type{ SYMBOL, INT, FLOAT, STRING, NIL, T, LEFT-PAREN, RIGHT-PAREN,
+                 QUOTE, DOT } ;
+
+struct gToken{
+  string content = "" ;
+  int type = -1 ;
 };
 
-enum ExcpType { NULLERR, EOFENCT, REQ_ATOM, REQ_RIGHT_P, EOLENCT, NONFUNC, NONLIST, WRONGTYPE, DEFERR,
-                WRONGARGNUM, UNBOND, DEFLVERR, CLEANLVERR, EXITLVERR, DIVZRO, NORET, CNDERR, LETERR,
-                LAMBERR, UNBONDPARA, UNBONDTEST, UNBONDCOND, NORET_B, SETERR
-};
 
 /* 
     最長寫到這邊---------------------------------------------------------------
 */
 
 class Scanner {
-public:
-  
+  public:
+
   Scanner() {
-    gLine = gColumn = 0 ;
+    gRow = gCol = 0 ;
   } // Scanner()
 
   char Getchar() {
     char c = getchar();
     if ( c == -1 ) 
       return '\r';
-    ++gColumn ;
+    ++gCol ;
     return c ;
   } // Getchar()
 
   void Putback( char ch ) {
     cin.putback( ch );
-    --gCol;
+    --gCol ;
   } // Putback()
 
-private:
-  string mLineBuf;
 };
+
 Scanner gScan ;
 
-class Token ;
-typedef Token * TokenPtr ;
+void ReadSExp( vector<gToken> & tk ) {
 
+  bool done = false ;
+  char c = '\0' ;
+  stringstream ss ;
+  gToken TokenType ;
+  int paren = 0 ;
+  while ( !done ) {
 
-class Token {
-  public:
-    int mType ;
-    string mContent ;
-    TokenPtr mPtrList[3] ;
+    c = gScan.Getchar() ;
 
-    Token() {
-      mType = EMPTY ;
-      mContent = "" ;
-      mPtrList[0] = mPtrList[1] = mPtrList[2] = NULL ;
-    } // Token()
-
-};
-
-class Function {
-
-  public:
-    TokenPtr GetToken() {
-      TokenPtr token = new Token() ;
-      char ch = gScan.Getchar() ;
-      if ( ch == '\r' ) {
-        gEOF = true ;
-        return token ;
-      } // if
-      if ( ch == '(' ) {
-        token -> mType = LEFT_PARENTHESIS ;
-        token -> mContent = "(" ;
-        return token ;
-      } // if
-      if ( ch == ')' ) {
-        token -> mType = RIGHT_PARENTHESIS ;
-        token -> mContent = ")" ;
-        return token ;
-      } // if
-      if ( ch == '.' ) {
-        token -> mType = DOT ;
-        token -> mContent = "." ;
-        return token ;
-      } // if
-      if ( ch == '\'' ) {
-        token -> mType = QUOTE ;
-        token -> mContent = "'" ;
-        return token ;
-      } // if
-      if ( ch == '#' ) {
-        token -> mType = SHARP ;
-        token -> mContent = "#" ;
-        return token ;
-      } // if
-      if ( ch == '+' || ch == '-' || ch == '*' || ch == '/' || ch == '=' || ch == '<' || ch == '>' ) {
-        token -> mType = OPERATOR ;
-        token -> mContent = ch ;
-        return token ;
-      } // if
-      if ( ch == ' ' || ch == '\t' || ch == '\n' ) {
-        if ( ch == '\n' ) {
-          ++gLine ;
-          gColumn = 0 ;
-        } // if
-        return GetToken() ;
-      } // if
-      if ( ch == '"' ) {
-        token -> mType = STRING ;
-        token -> mContent = "" ;
-        while ( ( ch = gScan.Getchar() ) != '"' ) {
-          if ( ch == '\r' ) {
-            throw ExcpType::EOLENCT ;
-          } // if
-          token -> mContent += ch ;
-        } // while
-        return token ;
-      } // if
-      if ( isdigit( ch ) ) {
-        token -> mType = INT ;
-        token -> mContent = ch ;
-        while ( isdigit( ch = gScan.Getchar() ) ) {
-          token -> mContent += ch ;
-        } // while
-        if ( ch == '.' ) {
-          token -> mType = FLOAT ;
-          token -> mContent += ch ;
-    } // GetToken()
-
-    void PrintToken( TokenPtr token ) {
-      while ( token -> PtrList[2] != NULL ) {
-        cout << token -> mContent << " " ;
-        token = token -> PtrList[0] ;
+    if ( c == ';' ) { // comment
+      while ( c != '\n' && c != '\r' )
+        c = gScan.Getchar() ;
+    } // if
+    else if ( c == '(' ) {
+      TokenType.content += c ;
+      TokenType.type = LEFT-PAREN ;
+      tk.push_back( TokenType ) ;
+      ++paren ;
+    } // else if
+    else if ( c == ')' ) {
+      TokenType.content += c ;
+      TokenType.type = RIGHT-PAREN ;
+      tk.push_back( TokenType ) ;
+      --paren ;
+      if ( parents == 0 ) done = true ;
+      else if ( paren < 0 ) {
+        cout << "ERROR(unexpected token):\')\'expexted when token at Line " << gRow << " Column " << gCol << "\n" ;
+        done = true ;
+      } // else if
+    } // else if
+    else if ( c == '\'' ) {
+      TokenType.type = QUOTE ;
+      while ( c != '\r' && c != '\n' ) {
+        TokenType.content += c ;
+        c = gScan.Getchar() ;
       } // while
-    } // PrintToken()
 
-};
-/*
-class Parser {
+      tk.push_back( TokenType ) ;
+      if ( c == '\r' ) {
+        cout << "ERROR(no closing quote):END-OF-FILE encountered at Line " << gRow << " Column " << gCol << "\n" ;
+        done = true ;
+      } // else if
 
-}
+    } // else if
+    else if ( c == '\"' ) {
+      TokenType.type = STRING ;
+      while ( c != '\r' &&  c != '\n' ) {
+        TokenType.content += c ;
+        c = gScan.Getchar() ;
+      } // while
 
-class Evaluator {
+      if ( c == '\n' ) {
+        cout << "ERROR(no closing quote):END-OF-LINE encountered at line " << gRow << " column " << gCol << "\n" ;
+        done = true ;
+      } // if
+      else if ( c == '\r' ) {
+        cout << "ERROR(no closing quote):END-OF-FILE encountered at line " << gRow << " column " << gCol << "\n" ;
+        done = true ;
+      } // else if
+      else {
+        tk.push_back( TokenType ) ;
+      } // else
 
-}
+    } // else if
+    else if ( c == '\n' ) {
+      ++gRow ;
+      gCol = 0 ;
+    } // else if
+    else if ( c == '\r' ) {
+      gEOF = true ;
+      done = true ;
+    } // else if
+    else if ( c == ' ' || c == '\t' ) {
+      tk.push_back( TokenType ) ;
+      TokenType.content = "" ;
+      TokenType.type = -1 ;
+    } // else if
+    else if ( isdigit(c) ) {
+      TokenType.type = INT ;
+      while ( isdigit(c) ) {
+        TokenType.content += c ;
+        c = gScan.Getchar() ;
+      } // while
+      
+      gScan.Putback(c) ;
+    } // else
+    else if ( isalpha(c) ) {
+      TokenType.type = SYMBOL ;
+      while ( isalpha(c) ) {
+        TokenType.content += c ;
+        c = gScan.Getchar() ;
+      } // while
 
-class Execption {
+      gScan.Putback(c) ;
+    } // else if
+    else {
+      cout << "ERROR: invalid token\n" ;
+      done = true ;
+    } // else
 
-}
-*/
+    if ( c != '\n' && c != '\r' )
+      tk.push_back( TokenType ) ;
+    TokenType.content = "" ;
+    TokenType.type = -1 ;
+    
+  } // while
+   
+} // ReadToken()
+
+void PrintToken( stringstream & ss ) {
+
+  string s ;
+  ss >> s ;
+  cout << s << "\n" ; 
+
+} // PrintToken()
 
 int main()
 {
-    cout << "Welcome to OurScheme!\n\n" ;
+  cout << "Welcome to OurScheme!\n" ;
+  cout << "> " ;
 
-    cin >> gTestNum ;
-    cin.ignore() ;
-    TokenPtr token = NULL ;
+  cin >> gTestNum ;
+  cin.ignore() ;
 
-    while ( !gEOF ) {
-        cout << "> " ;
-        gScan.Scan();
-        // ss << fixed << setprecision( 3 ) << atof( t->mContent.c_str() ) ;
-    } // while
-    return 0;
-}
+  vector<Token> expr ;
+
+  while ( !gEOF ) {
+    
+    ReadSExp(expr) ;
+    PrintSExp(expr) ;
+
+    expr.clear() ;
+    cout << "> " ;
+  } // while
+
+  if ( gExit ) {
+    cout << "ERROR(no more input):END-OF-FILE encoutered\n" ;
+  } // if
+
+  cout << "Thanks for using OurScheme!" ;
+  return 0 ;
+
+} // main()
