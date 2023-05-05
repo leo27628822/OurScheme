@@ -17,7 +17,7 @@ using namespace std;
 int gTestNum = 0, gRow = 0, gCol = 0 ;
 bool gEOF = false, gExit = false ;
 
-enum Token_Type{ SYMBOL, INT, FLOAT, STRING, NIL, T, LEFT-PAREN, RIGHT-PAREN,
+enum Token_Type{ SYMBOL, INT, FLOAT, STRING, NIL, T, LEFT_PAREN, RIGHT_PAREN,
                  QUOTE, DOT } ;
 
 struct gToken{
@@ -71,23 +71,29 @@ void ReadSExp( vector<gToken> & tk ) {
     } // if
     else if ( c == '(' ) {
       TokenType.content += c ;
-      TokenType.type = LEFT-PAREN ;
+      TokenType.type = LEFT_PAREN ;
       tk.push_back( TokenType ) ;
       ++paren ;
     } // else if
     else if ( c == ')' ) {
       TokenType.content += c ;
-      TokenType.type = RIGHT-PAREN ;
+      TokenType.type = RIGHT_PAREN ;
       tk.push_back( TokenType ) ;
       --paren ;
-      if ( parents == 0 ) done = true ;
+      if ( paren == 0 ) done = true ;
       else if ( paren < 0 ) {
         cout << "ERROR(unexpected token):\')\'expexted when token at Line " << gRow << " Column " << gCol << "\n" ;
         done = true ;
       } // else if
     } // else if
     else if ( c == '\'' ) {
-      TokenType.type = QUOTE ;
+      TokenType.type = QUOTE;
+      c = gScan.Getchar();
+      while (c != '\'') {
+        TokenType.content += c;
+        c = gScan.Getchar();
+      }
+      tk.push_back(TokenType);
       while ( c != '\r' && c != '\n' ) {
         TokenType.content += c ;
         c = gScan.Getchar() ;
@@ -181,12 +187,12 @@ int main()
   cin >> gTestNum ;
   cin.ignore() ;
 
-  vector<Token> expr ;
+  vector<gToken> expr ;
 
   while ( !gEOF ) {
     
     ReadSExp(expr) ;
-    PrintSExp(expr) ;
+    // PrintSExp(expr) ;
 
     expr.clear() ;
     cout << "> " ;
