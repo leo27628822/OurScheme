@@ -14,193 +14,176 @@
 
 using namespace std;
 
-int gTestNum = 0, gRow = 0, gCol = 0 ;
-bool gEOF = false, gExit = false ;
+int gTestNum = 0, gRow = 1, gCol = 0 ;
+bool gHasOutput = false, gExit = false ;
 
-enum Token_Type{ SYMBOL, INT, FLOAT, STRING, NIL, T, LEFT_PAREN, RIGHT_PAREN,
-                 QUOTE, DOT } ;
+// enum Token_Type { LEFT_PAREN, RIGHT_PAREN, INT, STRING, DOT, FLOAT,  NIL, T,  
+//                 QUOTE, SYMBOL } ;
+
+enum Token_Type {
+  EMPTY, NIL, INT, FLOAT, DOT, T, STRING, HASH,
+  OPERATOR, LEFT_PAREN, RIGHT_PAREN, SYMBOL,
+  CONS, LIST, QUOTE, DEFINE, CAR, CDR, ISPAIR, ISLIST, ISATOM, ISNULL,
+  ISINT, ISREAL, ISNUM, ISSTR, ISBOOL, ISSYM, ADD, SUB, MULT, DIV,
+  NOT, AND, OR, BIGG, BIGEQ, SML, SMLEQ, EQ, STRAPP, STRBIG,
+  STRSML, STREQL, ISEQV, ISEQL, BEGIN, IF, COND, LET, LAMBDA, PRINT, READ,
+  WRITE, EVAL, DSPSTR, NEWLINE, SYMTOSTR, NUMTOSTR, SET, CEATEOBJ, ISERROBJ,
+  VERBOS, ISVERBOS, EXIT, CLEAN, USRFUNC, ERROBJ
+};
 
 struct gToken{
   string content = "" ;
   int type = -1 ;
 };
 
-
 /* 
     最長寫到這邊---------------------------------------------------------------
 */
 
-class Scanner {
-  public:
+void ReadExpression( vector<gToken> & expression ) {
 
-  Scanner() {
-    gRow = gCol = 0 ;
-  } // Scanner()
-
-  char Getchar() {
-    char c = getchar();
-    if ( c == -1 ) 
-      return '\r';
-    ++gCol ;
-    return c ;
-  } // Getchar()
-
-  void Putback( char ch ) {
-    cin.putback( ch );
-    --gCol ;
-  } // Putback()
-
-};
-
-Scanner gScan ;
-
-void ReadSExp( vector<gToken> & tk ) {
-
-  bool done = false ;
-  char c = '\0' ;
-  stringstream ss ;
-  gToken TokenType ;
-  int paren = 0 ;
-  while ( !done ) {
-
-    c = gScan.Getchar() ;
-
-    if ( c == ';' ) { // comment
-      while ( c != '\n' && c != '\r' )
-        c = gScan.Getchar() ;
+  bool end_of_read = false ;
+  bool in_string = false, in_quote = false ;
+  char c ;
+  int num_of_paren = 0 ;
+  gToken t ;
+  while ( !end_of_read ) {
+    if ( ( c = getchar() ) == EOF ) {
+      c == '\r' ;
     } // if
-    else if ( c == '(' ) {
-      TokenType.content += c ;
-      TokenType.type = LEFT_PAREN ;
-      tk.push_back( TokenType ) ;
-      ++paren ;
-    } // else if
-    else if ( c == ')' ) {
-      TokenType.content += c ;
-      TokenType.type = RIGHT_PAREN ;
-      tk.push_back( TokenType ) ;
-      --paren ;
-      if ( paren == 0 ) done = true ;
-      else if ( paren < 0 ) {
-        cout << "ERROR(unexpected token):\')\'expexted when token at Line " << gRow << " Column " << gCol << "\n" ;
-        done = true ;
-      } // else if
-    } // else if
-    else if ( c == '\'' ) {
-      TokenType.type = QUOTE;
-      c = gScan.Getchar();
-      while (c != '\'') {
-        TokenType.content += c;
-        c = gScan.Getchar();
-      }
-      tk.push_back(TokenType);
-      while ( c != '\r' && c != '\n' ) {
-        TokenType.content += c ;
-        c = gScan.Getchar() ;
-      } // while
 
-      tk.push_back( TokenType ) ;
-      if ( c == '\r' ) {
-        cout << "ERROR(no closing quote):END-OF-FILE encountered at Line " << gRow << " Column " << gCol << "\n" ;
-        done = true ;
-      } // else if
-
-    } // else if
-    else if ( c == '\"' ) {
-      TokenType.type = STRING ;
-      while ( c != '\r' &&  c != '\n' ) {
-        TokenType.content += c ;
-        c = gScan.Getchar() ;
-      } // while
-
-      if ( c == '\n' ) {
-        cout << "ERROR(no closing quote):END-OF-LINE encountered at line " << gRow << " column " << gCol << "\n" ;
-        done = true ;
+    if ( t.type == -1 ) {
+      if ( isalpha( c ) ) {
+        if ( c == 't' ) {
+          t.type == T ;
+        } // if
+        else {
+          t.type == SYMBOL ;
+        }
       } // if
-      else if ( c == '\r' ) {
-        cout << "ERROR(no closing quote):END-OF-FILE encountered at line " << gRow << " column " << gCol << "\n" ;
-        done = true ;
+      else if ( isdigit( c ) ) {
+        t.type == INT ;
+      } // else if
+      else if ( c == '(' ) {
+        t.type == LEFT_PAREN ;
+        end_of_read = true ;
+      } // else if
+      else if ( c == ')' ) {
+        t.type == RIGHT_PAREN ;
+        end_of_read = true ;
+      } //else if
+      else if ( c == '.' ) {
+        t.type == DOT ;
+      } // else if
+      else if ( c == '\'' ) {
+        t.type == QUOTE ;
+        end_of_read = true ;
+      } // else if
+      else if ( c == '\"' ) {
+        t.type == STRING ;
+      } // else if
+      else if ( c == '#' ) {
+        t.type == HASH ;
+      } // else if
+      else if ( c == '+' || c == '-' ) {
+        t.type == OPERATOR ;
+      } // else if
+      else if ( isspace( c ) ) {
+        if ( c == '\n' ) {
+          if ( gHasOutput ) {
+            gRow = 1 ;
+            gHasOutput = false ;
+          } // if
+          else {
+            gRow++ ;
+          } // else
+
+          gCol = 0 ;
+        } // if
+        else if ( c == '\r' ) {
+          gExit = true ;
+          throw "ERROR (no more input) : END-OF-FILE encountered" ;
+        } // else if
+      } // else if
+      else if ( c == ';' ) {
+        char tmp ;
+        do {
+          if (  ( tmp = getchar() ) == EOF ) {
+            gExit = true ;
+            throw "ERROR (no more input) : END-OF-FILE encountered" ;
+          } // if
+        } while ( tmp != '\n' ) ;
+
+        cin.putback( tmp ) ;
       } // else if
       else {
-        tk.push_back( TokenType ) ;
+        t.type = SYMBOL ;
       } // else
-
-    } // else if
-    else if ( c == '\n' ) {
-      ++gRow ;
-      gCol = 0 ;
-    } // else if
-    else if ( c == '\r' ) {
-      gEOF = true ;
-      done = true ;
-    } // else if
-    else if ( c == ' ' || c == '\t' ) {
-      tk.push_back( TokenType ) ;
-      TokenType.content = "" ;
-      TokenType.type = -1 ;
-    } // else if
-    else if ( isdigit(c) ) {
-      TokenType.type = INT ;
-      while ( isdigit(c) ) {
-        TokenType.content += c ;
-        c = gScan.Getchar() ;
-      } // while
       
-      gScan.Putback(c) ;
-    } // else
-    else if ( isalpha(c) ) {
-      TokenType.type = SYMBOL ;
-      while ( isalpha(c) ) {
-        TokenType.content += c ;
-        c = gScan.Getchar() ;
-      } // while
+      if ( !isspace( c ) && c != ';' ) {
+        t.content += c ;
+      } // if
 
-      gScan.Putback(c) ;
+    } // if
+    else if ( t.type == HASH ) {
+      if ( isalpha( c ) ) {
+        if ( c == 't' ) {
+          t.type == T ;
+        } // if
+        else if ( c == 'f' ) {
+          t.type == NIL ;
+        } // else if
+        else {
+          t.type == SYMBOL ;
+        } // else
+        
+        t.content += c ;
+      } // if
+      else if ( isdigit( c ) ) {
+        t.type = SYMBOL ;
+        t.content += c ;
+      } // else if
+      else if ( t == '(' || t == ')' || )  // DOOOOOOOOOOOOOOOOOOOOOO
+
     } // else if
-    else {
-      cout << "ERROR: invalid token\n" ;
-      done = true ;
-    } // else
 
-    if ( c != '\n' && c != '\r' )
-      tk.push_back( TokenType ) ;
-    TokenType.content = "" ;
-    TokenType.type = -1 ;
-    
   } // while
-   
-} // ReadToken()
 
-void PrintToken( stringstream & ss ) {
+  
+} // ReadExpression()
 
-  string s ;
-  ss >> s ;
-  cout << s << "\n" ; 
-
-} // PrintToken()
+void PrintExpression( vector<gToken> & expression ) {
+  cout << "Expression: " ;
+  for ( int i = 0 ; i < expression.size() ; ++i ) {
+    cout << expression[i].content << " " ;
+  } // for
+  cout << "\n" ;
+} // PrintExpression()
 
 int main()
 {
-  cout << "Welcome to OurScheme!\n" ;
-  cout << "> " ;
+  cout << "Welcome to OurScheme!" ;
+  cout << "\n> " ;
 
   cin >> gTestNum ;
   cin.ignore() ;
 
-  vector<gToken> expr ;
+  vector<gToken> expression ;
+  string str_tmp ;
+  cout << "\n> " ;
 
-  while ( !gEOF ) {
+  while ( true ) {
+    try {
+      ReadExpression( expression ) ;
+      PrintExpression( expression ) ;
+      expression.clear() ;
+      expression.shrink_to_fit() ;
+      cout << "\n> " ;
+    } catch ( const char * msg ) {
+      cout << msg << "\n" ;
+    } // catch
     
-    ReadSExp(expr) ;
-    // PrintSExp(expr) ;
-
-    expr.clear() ;
-    cout << "> " ;
   } // while
-
-  if ( gExit ) {
-    cout << "ERROR(no more input):END-OF-FILE encoutered\n" ;
-  } // if
 
   cout << "Thanks for using OurScheme!" ;
   return 0 ;
