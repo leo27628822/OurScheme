@@ -5,187 +5,286 @@
 # include <string>
 # include <vector>
 # include <sstream>
-# include <exception>
 # include <iomanip>
 # include <cctype>
 # include <cstdlib>
-# include <cstring>
-# include <cstdio>
+# include <string.h>
+# include <stdio.h>
 
-using namespace std;
+using namespace std ;
 
-int gTestNum = 0, gRow = 1, gCol = 0 ;
-bool gHasOutput = false, gExit = false ;
-
-// enum Token_Type { LEFT_PAREN, RIGHT_PAREN, INT, STRING, DOT, FLOAT,  NIL, T,  
-//                 QUOTE, SYMBOL } ;
+int gTestNum = 0 ;
 
 enum Token_Type {
-  EMPTY, NIL, INT, FLOAT, DOT, T, STRING, HASH,
-  OPERATOR, LEFT_PAREN, RIGHT_PAREN, SYMBOL,
-  CONS, LIST, QUOTE, DEFINE, CAR, CDR, ISPAIR, ISLIST, ISATOM, ISNULL,
-  ISINT, ISREAL, ISNUM, ISSTR, ISBOOL, ISSYM, ADD, SUB, MULT, DIV,
-  NOT, AND, OR, BIGG, BIGEQ, SML, SMLEQ, EQ, STRAPP, STRBIG,
-  STRSML, STREQL, ISEQV, ISEQL, BEGIN, IF, COND, LET, LAMBDA, PRINT, READ,
-  WRITE, EVAL, DSPSTR, NEWLINE, SYMTOSTR, NUMTOSTR, SET, CEATEOBJ, ISERROBJ,
-  VERBOS, ISVERBOS, EXIT, CLEAN, USRFUNC, ERROBJ
+  LEFT_PAREN = 1, RIGHT_PAREN = 2, DOT = 3, QUOTE = 4, SYMBOL = 5,
+  INT = 6, FLOAT = 7, STRING = 8, NIL = 9, TRUE = 10,
+  SEMI_COLON = 11, ATOM = 12, PAREN_QUOTE = 13, DOT_PAREN = 14, 
+  END_OF_FILE = 15, INITIAL = 16
 };
 
-struct gToken{
-  string content = "" ;
-  int type = -1 ;
+enum Error_Type {
+  UNEXPEXTED_ATOM_OR_LEFT_PAREN = 100,
+  UNEXPECTED_RIGHT_PAREN = 200,
+  NO_CLOSING_QUOTE = 300,
+  ERROR_EOF = 400,
+  QUIT_SCHEME = 500
 };
+
+struct Token {
+  string name ;
+  int type ;
+  int line ;
+  int column ;
+  Token * left ;
+  Token * right ;
+};
+
+typedef Token * NodePtr ;
 
 /* 
     最長寫到這邊---------------------------------------------------------------
 */
 
-void ReadExpression( vector<gToken> & expression ) {
+class Scanner {
 
-  bool end_of_read = false ;
-  bool in_string = false, in_quote = false ;
-  char c ;
-  int num_of_paren = 0 ;
-  gToken t ;
-  while ( !end_of_read ) {
-    if ( ( c = getchar() ) == EOF ) {
-      c == '\r' ;
-    } // if
+  public :
 
-    if ( t.type == -1 ) {
-      if ( isalpha( c ) ) {
-        if ( c == 't' ) {
-          t.type == T ;
-        } // if
-        else {
-          t.type == SYMBOL ;
-        }
-      } // if
-      else if ( isdigit( c ) ) {
-        t.type == INT ;
-      } // else if
-      else if ( c == '(' ) {
-        t.type == LEFT_PAREN ;
-        end_of_read = true ;
-      } // else if
-      else if ( c == ')' ) {
-        t.type == RIGHT_PAREN ;
-        end_of_read = true ;
-      } //else if
-      else if ( c == '.' ) {
-        t.type == DOT ;
-      } // else if
-      else if ( c == '\'' ) {
-        t.type == QUOTE ;
-        end_of_read = true ;
-      } // else if
-      else if ( c == '\"' ) {
-        t.type == STRING ;
-      } // else if
-      else if ( c == '#' ) {
-        t.type == HASH ;
-      } // else if
-      else if ( c == '+' || c == '-' ) {
-        t.type == OPERATOR ;
-      } // else if
-      else if ( isspace( c ) ) {
+    int mLine ;
+    int mColumn ;
+
+    Scanner() {
+      mLine = 1 ;
+      mColumn = 0 ;
+    } // Scanner()
+
+    void SkipSpace() {
+      char c = '\0' ;
+
+      while ( ( c = cin.get() ) != EOF ) {
+        mColumn++ ;
+
         if ( c == '\n' ) {
-          if ( gHasOutput ) {
-            gRow = 1 ;
-            gHasOutput = false ;
-          } // if
-          else {
-            gRow++ ;
-          } // else
-
-          gCol = 0 ;
+          mLine++ ;
+          mColumn = 0 ;
         } // if
-        else if ( c == '\r' ) {
-          gExit = true ;
-          throw "ERROR (no more input) : END-OF-FILE encountered" ;
-        } // else if
-      } // else if
-      else if ( c == ';' ) {
-        char tmp ;
-        do {
-          if (  ( tmp = getchar() ) == EOF ) {
-            gExit = true ;
-            throw "ERROR (no more input) : END-OF-FILE encountered" ;
-          } // if
-        } while ( tmp != '\n' ) ;
 
-        cin.putback( tmp ) ;
+        c = cin.peek() ;
+        if ( !isspace( c ) ) {
+          return ;
+        } // if
+
+      } // while
+
+    } // SkipSpace()
+
+    void GetToken( Token & token ) {
+      int ch = 0 ;
+      string str = "" ;
+
+      ch = cin.peek() ;
+      if ( isspace( ch ) ) {
+        SkipSpace() ;
+      } // if
+
+      ch = cin.peek() ;
+      if ( ch == '(' || ch == ')' ) {
+        GetParen( token ) ;
+      } // if
+      else if ( ch == '#' ) {
+        GetPoundSign( token ) ;
       } // else if
+      else if ( ch == '\'' || ch == '"' ) {
+        GetQuote( token ) ;
+      } // else if
+      else if ( ch == ';' ) {
+        GetSemicolon( token ) ;
+      } // else if
+      else if ( ch == '+' || ch == '-' || ch == '.' || 
+                isdigit( ch ) ) {
+        GetNumber( token ) ;
+      } // else if
+      else if ( ch == EOF ) {
+        token.name = "" ;
+        token.type = END_OF_FILE ;
+      } //else if
       else {
-        t.type = SYMBOL ;
+        GetSymbol( token, str ) ;
       } // else
       
-      if ( !isspace( c ) && c != ';' ) {
-        t.content += c ;
-      } // if
+    } // GetToken()
 
-    } // if
-    else if ( t.type == HASH ) {
-      if ( isalpha( c ) ) {
-        if ( c == 't' ) {
-          t.type == T ;
+    void GetParen( Token & token ) {
+      char c = cin.peek() ;
+
+      if ( c == '(' ) {
+        c = cin.get() ;
+        token.name += c ;
+        token.type = LEFT_PAREN ;
+        mColumn++ ;
+        token.column = mColumn ;
+
+        c = cin.peek() ;
+        if ( isspace( c ) ) {
+          SkipSpace() ;
         } // if
-        else if ( c == 'f' ) {
-          t.type == NIL ;
-        } // else if
-        else {
-          t.type == SYMBOL ;
-        } // else
-        
-        t.content += c ;
+    
+        c = cin.peek() ;
+        if ( c == ')' ) {
+          // get '()' 
+          c = cin.get() ;
+          mColumn++ ;
+          token.column = mColumn ;
+          token.name += c ;
+          token.type = NIL ;
+        } // if
+
       } // if
-      else if ( isdigit( c ) ) {
-        t.type = SYMBOL ;
-        t.content += c ;
+      else {
+        c = cin.get() ;
+        token.type = RIGHT_PAREN ;
+        token.name += c ;
+        mColumn++ ;
+        token.column = mColumn ;
+      } // else
+
+      token.line = mLine ;
+
+    } // GetParen()
+
+    void GetSemicolon( Token & token ) {
+      char c = cin.get() ;
+
+      mColumn++ ;
+      token.column = mColumn ;
+      token.line = mLine ;
+
+      GetGarbage() ;
+      mLine++ ;
+      mColumn = 0 ;
+
+      token.name = c ;
+      token.type = SEMI_COLON ;
+
+    } // GetSemicolon()
+
+    void GetPoundSign( Token & token ) {
+      char c = cin.get() ;
+      string str ;
+      str += c ;
+      mColumn++ ;
+      token.column = mColumn ;
+      token.line = mLine ;
+
+      c = cin.peek() ;
+      if ( c == 't' || c == 'f' ) {
+        c = cin.get() ;
+        mColumn++ ;
+        str += c ;
+
+        if ( c == 't' ) {
+          token.type = TRUE ;
+        } // if
+        else {
+          token.type = NIL ;
+        } // else
+
+        c = cin.peek() ;
+        if ( isspace( c ) || c == '(' || c == ')' || 
+             c == '"' || c == '\'' || c == ';' ) {
+          token.name = str ;
+          return ;
+        } // if
+        else {
+          GetSymbol( token, str ) ;
+        } // else
+
+      } // if
+      else if ( isspace( c ) ) {
+        token.name = str ;
+        token.type = SYMBOL ;
       } // else if
-      else if ( t == '(' || t == ')' || )  // DOOOOOOOOOOOOOOOOOOOOOO
+      else {
+        GetSymbol( token, str ) ;
+      } // else
+    } // GetPoundSign()
 
-    } // else if
+    void GetSymbol( Token & token, string str ) {
+      char c = cin.peek() ;
+      bool stop = false ;
+      string str_tmp = "" ;
 
-  } // while
+      token.line = mLine ;
+      if ( isspace( c ) || c == '(' || c == ')' || 
+           c == '"' || c == '\'' || c == ';' ) {
+        stop = true ;
+      } // if
 
-  
-} // ReadExpression()
+      while ( !stop && ( c = cin.get() ) != EOF ) {
+        mColumn++ ;
+        if ( token.column == 0 ) {
+          token.column = mColumn ;
+        } // if
+        
+        str += c ;
+        c = cin.peek() ;
 
-void PrintExpression( vector<gToken> & expression ) {
-  cout << "Expression: " ;
-  for ( int i = 0 ; i < expression.size() ; ++i ) {
-    cout << expression[i].content << " " ;
-  } // for
-  cout << "\n" ;
-} // PrintExpression()
+        if ( isspace( c ) || c == '(' || c == ')' || 
+             c == '"' || c == '\'' || c == ';' ) {
+          stop = true ;
+        } // if
 
-int main()
-{
-  cout << "Welcome to OurScheme!" ;
-  cout << "\n> " ;
+      } // while
 
+      if ( str == "t" ) {
+        token.type = TRUE ;
+      } // if
+      else if ( str == "f" ) {
+        token.type = NIL ;
+      } // else if
+      else {
+        token.type = SYMBOL ;
+      } // else
+      
+      token.name = str ;
+
+    } // GetSymbol()
+
+    void GetQuote( Token & token ) {
+      char c = cin.get() ;
+      
+    } // GetQuote()
+
+} // Scanner
+
+int main() {
   cin >> gTestNum ;
   cin.ignore() ;
 
-  vector<gToken> expression ;
-  string str_tmp ;
-  cout << "\n> " ;
+  bool isExit = false ;
+  Parser parser ;
 
-  while ( true ) {
+  cout << "Welcome to OurScheme!\n\n" ;
+
+  while ( !isExit ) {
     try {
-      ReadExpression( expression ) ;
-      PrintExpression( expression ) ;
-      expression.clear() ;
-      expression.shrink_to_fit() ;
-      cout << "\n> " ;
-    } catch ( const char * msg ) {
-      cout << msg << "\n" ;
+      cout << "> " ;
+      parser.ReadExp() ;
+      parser.BuildTree() ;
+      parser.Prettyprint( parser.GetRoot() ) ;
+      parser.Init() ;
+      cout << "\n" ;
+
+    } catch ( Exception * error ) {
+
+      parser.DealError( error ) ;
+      if ( error -> mType == ERROR_EOF || error -> mType == QUIT_SCHEME ) {
+        isExit = true ;
+      } // if
+
     } // catch
-    
+
   } // while
 
-  cout << "Thanks for using OurScheme!" ;
-  return 0 ;
+  cout << "\nThanks for using OurScheme!\n" ;
 
 } // main()

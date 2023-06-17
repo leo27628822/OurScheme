@@ -64,7 +64,7 @@ public:
 class Scanner {
 public:
     int mLine, mColumn;
-    void SkipWhiteSpace(); // 跳果所有 White spaces 直到第一個不是 White spaces 的 char
+    void SkipWhiteSpace(); // 跳過所有 White spaces 直到第一個不是 White spaces 的 char
     void Gettoken( Token& token ) ;
     void GetParen( Token& token ) ;
     void GetSemiColon( Token& token ) ;
@@ -178,6 +178,8 @@ public:
     Node Eval_string_equal_to(Node cur, int level, int arguCount, int printType);
     Node Eval_eqv(Node cur, int level, int arguCount, int printType);
     Node Eval_equal_tree(Node cur, int level, int arguCount, int printType);
+    Node Eval_let(Node cur, int level, int arguCount, int printType) ;
+
     Node CloneTree(Node cur, int& p_count); // 只能複製 同一 S_exp 的東西 in the same pair of parses
     Node GetBind(Node cur);
     Node NewBind(Node bind, string name, int type);
@@ -313,6 +315,7 @@ int main() {
 
     // input testNum
     cin >> testNum;
+    printf( "TEST\n" ) ;
     scanf( "%c", &ch ); // get '\n'
 
     cout << "Welcome to OurScheme!" << endl << endl;
@@ -4208,6 +4211,8 @@ Node Execuate::Eval_equal_tree( Node cur, int level, int arguCount, int printTyp
 
     return result;
 } // Execuate::Eval_equal_tree()
+
+// Node Execuate::Eval_let( Node cur,)
 
 Node Execuate::CloneTree( Node cur, int& p_count ) {
     if ( cur == NULL )

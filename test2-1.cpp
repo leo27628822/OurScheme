@@ -25,7 +25,8 @@ enum Error_Type {
 struct Token {
     string name ;
     int type ;
-    int line, column ;
+    int line ;
+    int column ;
     Token * left ;
     Token * right ;
 };
@@ -171,9 +172,9 @@ int main() {
             parser.BuildTree() ;
             parser.PrintTree( parser.mRoot ) ;
             parser.InitialScheme() ;
-            cout << endl ;
+            cout << "\n" ;
             // DeleteTree
-        } // tru
+        } // try
         catch ( Exception * error ) {
             parser.DealWithError() ;
             if ( error -> mType == ERROR_EOF || error -> mType == QUIT_SCHEME )
@@ -199,8 +200,10 @@ void Scanner::SkipWhiteSpace() {
         ch = cin.peek() ;
         if ( ch == '\n' || ch == '\t' || ch == ' ' )
             ; // do nothing      
-        else 
+        else {
             return ; // get the first non-white-space char
+        } // else
+
     } // while
 } // Scanner::SkipWhiteSpace()
 
@@ -209,34 +212,43 @@ void Scanner::Gettoken( Token & token ) {
     char tmp[80] = { '\0' } ;
 
     ch = cin.peek() ;
-    if ( ch == '\n' || ch == '\t' || ch == ' ' ) // 把white space讀乾淨
+    if ( isspace( ch ) ) { // 把white space讀乾淨
         SkipWhiteSpace() ;
+    } // if
 
     ch = cin.peek() ; // 先偷看一下 但不讀入
-    if ( ch == '(' || ch == ')' )
+    if ( ch == '(' || ch == ')' ) {
         // maybe '(' or '()'
         GetParen( token ) ;
-    else if ( ch == '#' )
+    } // if
+    else if ( ch == '#' ) {
         // maybe '#t' or '#f' or symbol
         GetPoundSign( token ) ;
-    else if ( ch == '\'' || ch == '"' )
+    } // else if
+    else if ( ch == '\'' || ch == '"' ) {
         GetQuote( token ) ;
-    else if ( ch == ';' )
+    } // else if
+    else if ( ch == ';' ) {
         GetSemiColon( token ) ;
+    } // else if
     else if ( ch == '+' || ch == '-' || ch == '.' ||
-            ( ch >= '0' && ch <= '9' ) )
+            ( ch >= '0' && ch <= '9' ) ) {
         GetIntOrFloat( token ) ; // 在裡面做詳細分類
+    } // else if
     else if ( ch == EOF ) {
         token.name = "" ;
         token.type = END_OF_LINE ;
     } // else if
-    else
+    else {
         GetSymbol( token, tmp ) ;
+    } // else
     
 } // Scanner::Gettoken()
 
 void Scanner::GetParen( Token & token ) {
-    int peek = 0, type = 999, tmp_column = -100;
+    int peek = 0 ;
+    int type = 999 ;
+    int tmp_column = -100 ;
     char ch = '\0' ;
     char tmp[3] = { '\0' } ;
 
@@ -245,19 +257,20 @@ void Scanner::GetParen( Token & token ) {
         // maybe '(' or '()'
         type = LEFT_PAREN ;
         scanf( "%c", &ch ) ; // get '('
-        mColumn ++ ;
+        mColumn++ ;
         tmp_column = mColumn ;
         tmp[0] = ch ;
 
         peek = cin.peek() ;
-        if ( peek == '\n' || peek == '\t' || peek == ' ' )
+        if ( peek == '\n' || peek == '\t' || peek == ' ' ) {
             SkipWhiteSpace() ;
+        } // if
 
         peek = cin.peek() ;
         if ( peek == ')' ) {
             // get '()'
             scanf( "%c", &ch ) ;
-            mColumn ++ ;
+            mColumn++ ;
             tmp[1] = ch ;
             type = NILS ;
         } // if
@@ -267,7 +280,7 @@ void Scanner::GetParen( Token & token ) {
         // get ')'
         type = RIGHT_PAREN ;
         scanf( "%c", &ch ) ;
-        mColumn ++ ;
+        mColumn++ ;
         tmp_column = mColumn ;
         tmp[0] = ch ;
     } // else
@@ -280,276 +293,313 @@ void Scanner::GetParen( Token & token ) {
 } // Scanner::GetParen()
 
 void Scanner::GetSemiColon( Token & token ) {
-    char tmp[3] = { '\0' };
-    char ch = '\0';
+    char tmp[3] = { '\0' } ;
+    char ch = '\0' ;
 
-    scanf( "%c", &ch ); // get ';'
-    tmp[0] = ch;
-    mColumn ++;
-    token.column = mColumn;
-    token.line = mLine;
-    GetGarbage(); // 把註解吃掉
-    mLine ++;
-    mColumn = 0;
+    scanf( "%c", &ch ) ; // get ';'
+    tmp[0] = ch ;
+    mColumn++ ;
+    token.column = mColumn ;
+    token.line = mLine ;
+    GetGarbage() ; // 把註解吃掉
+    mLine++ ;
+    mColumn = 0 ;
 
-    token.name = CharToString( tmp );
-    token.type = SEMI_COLON;
+    token.name = CharToString( tmp ) ;
+    token.type = SEMI_COLON ;
 } // Scanner::GetSemiColon()
 
 void Scanner::GetPoundSign( Token & token ) {
-    int peek = 0, type = 999, i = 2;
-    char ch = '\0';
-    char tmp[80] = { '\0' };
+    int peek = 0 ;
+    int type = 999 ;
+    int i = 2 ;
+    char ch = '\0' ;
+    char tmp[80] = { '\0' } ;
 
-    scanf( "%c", &ch ); // get '#'
-    mColumn ++;
-    token.column = mColumn;
-    token.line = mLine;
-    tmp[0] = ch;
+    scanf( "%c", &ch ) ; // get '#'
+    mColumn++ ;
+    token.column = mColumn ;
+    token.line = mLine ;
+    tmp[0] = ch ;
 
-    peek = cin.peek();
+    peek = cin.peek() ;
     if ( peek == 't' || peek == 'f' ) {
         // maybe '#t' or '#f'
-        scanf( "%c", &ch ); // get 't' or 'f'
-        mColumn ++;
-        tmp[1] = ch;
+        scanf( "%c", &ch ) ; // get 't' or 'f'
+        mColumn++ ;
+        tmp[1] = ch ;
 
-        if ( peek == 't' ) // '#t'
-            type = TRUE;
-        else // '#f'
-            type = NILS;
+        if ( peek == 't' ) { // '#t'
+            type = TRUE ;
+        } // if
+        else { // '#f'
+            type = NILS ;
+        } // else
 
         peek = cin.peek();
         if ( peek == ' ' || peek == '\t' || peek == '\n' ||
              peek == '(' || peek == ')' || 
              peek == '\'' || peek == '"' || peek == ';' ) {
             // get '#t' or '#f'
-            token.name = CharToString( tmp );
-            token.type = type;
+            token.name = CharToString( tmp ) ;
+            token.type = type ;
             return;
         } // if
-        else
-            GetSymbol( token, tmp );
-            
+        else {
+            GetSymbol( token, tmp ) ;
+        } // else
+
     } // if
     else if ( peek == ' ' || peek == '\t' || peek == '\n' ) {
-        token.name = CharToString( tmp );
-        token.type = SYMBOL;
-        return;
+        token.name = CharToString( tmp ) ;
+        token.type = SYMBOL ;
+        return ;
     } // else if
-    else
-        GetSymbol( token, tmp );
+    else {
+        GetSymbol( token, tmp ) ;
+    } // else
 
 } // Scanner::GetPoundSign()
 
 void Scanner::GetSymbol( Token & token, char ch[80] ) {
-    int peek, type = 999;
-    int i = strlen( ch ); // index
-    char tmp = '\0';
-    string s = "";
-    bool stop = false;
+    int peek ;
+    int type = 999 ;
+    int i = strlen( ch ) ; // index
+    char tmp = '\0' ;
+    string s = "" ;
+    bool stop = false ;
 
-    token.line = mLine;
-    peek = cin.peek();
+    token.line = mLine ;
+    peek = cin.peek() ;
     if ( peek == ' ' || peek == '\t' || peek == '\n' ||
          peek == '(' || peek == ')' ||
-         peek == '\'' || peek == '"' || peek == ';' )
-        stop = true;
+         peek == '\'' || peek == '"' || peek == ';' ) {
+        stop = true ;
+    } // if
 
     while ( !stop && ( scanf( "%c", &tmp ) != EOF ) ) {
-        mColumn ++;
-        if ( token.column == 0 )
+        mColumn++ ;
+        if ( token.column == 0 ) {
             token.column = mColumn;
+        } // if
 
-        ch[i] = tmp;
-        peek = cin.peek(); // 偷看下一個char
+        ch[i] = tmp ;
+        peek = cin.peek() ; // 偷看下一個char
 
         if ( peek == ' ' || peek == '\t' || peek == '\n' ||
              peek == '(' || peek == ')' ||
-             peek == '\'' || peek == '"' || peek == ';' )
-            stop = true;
+             peek == '\'' || peek == '"' || peek == ';' ) {
+            stop = true ;
+        } // if
 
-        i ++;
+        i++ ;
     } // while
 
-    s = CharToString( ch );
-    if ( s.compare( "t" ) == 0 )
-        type = TRUE;
-    else if ( s.compare( "nil" ) == 0 )
-        type = NILS;
-    else
-        type = SYMBOL;
+    s = CharToString( ch ) ;
+    if ( s.compare( "t" ) == 0 ) {
+        type = TRUE ;
+    } // if
+    else if ( s.compare( "nil" ) == 0 ) {
+        type = NILS ;
+    } // else if
+    else {
+        type = SYMBOL ;
+    } // else
 
-    token.name = s;
-    token.type = type;
+    token.name = s ;
+    token.type = type ;
 } // Scanner::GetSymbol()
 
 void Scanner::GetQuote( Token & token ) {
-    char ch = '\0', tmp[80] = { '\0' }, escape[3] = { '\0' };
-    int peek, i = 1;
+    char ch = '\0' ;
+    char tmp[80] = { '\0' } ;
+    char escape[3] = { '\0' } ;
+    int peek ;
+    int i = 1 ;
 
-    peek = cin.peek();
-    scanf( "%c", &ch ); // maybe '"' or '\''
-    mColumn ++;
+    peek = cin.peek() ;
+    scanf( "%c", &ch ) ; // maybe '"' or '\''
+    mColumn++ ;
 
     // set token address
-    token.line = mLine;
-    token.column = mColumn;
+    token.line = mLine ;
+    token.column = mColumn ;
 
-    tmp[0] = ch;
+    tmp[0] = ch ;
     if ( peek == '\'' ) {
         // get '\''
-        token.name = CharToString( tmp );
-        token.type = QUOTE;
-        return;
+        token.name = CharToString( tmp ) ;
+        token.type = QUOTE ;
+        return ;
     } // if
     else {
         // String
-        peek = cin.peek();
+        peek = cin.peek() ;
         while ( peek != '"' ) {
             if ( peek == '\\') {
-                scanf( "%c", &ch );
-                mColumn ++;
-                escape[0] = ch; // get '\\'
+                scanf( "%c", &ch ) ;
+                mColumn++ ;
+                escape[0] = ch ; // get '\\'
 
-                peek = cin.peek();
-                if ( peek == '\n' )
+                peek = cin.peek() ;
+                if ( peek == '\n' ) {
                     throw new Exception( NO_CLOSING_QUOTE, mLine, mColumn + 1 );
+                } // if
 
-                scanf( "%c", &ch ); // maybe 'n' or '\\' or '"' or '\t' or other
-                mColumn ++;
-                if ( ch == 'n' )
-                    tmp[i] = '\n';
-                else if ( ch == 't' )
-                    tmp[i] = '\t';
-                else if ( ch == '\\' )
-                    tmp[i] = '\\';
-                else if ( ch == '"' )
-                    tmp[i] = '"';
+                scanf( "%c", &ch ) ; // maybe 'n' or '\\' or '"' or '\t' or other
+                mColumn++ ;
+                if ( ch == 'n' ) {
+                    tmp[i] = '\n' ;
+                } // if
+                else if ( ch == 't' ) {
+                    tmp[i] = '\t' ;
+                } // else if
+                else if ( ch == '\\' ) {
+                    tmp[i] = '\\' ;
+                } // else if
+                else if ( ch == '"' ) {
+                    tmp[i] = '"' ;
+                } // else if
                 else {
                     // other
-                    escape[1] = ch;
-                    strcat( tmp, escape );
-                    escape[0] = '\0';
-                    i = strlen( tmp ) - 1;
+                    escape[1] = ch ;
+                    strcat( tmp, escape ) ;
+                    escape[0] = '\0' ;
+                    i = strlen( tmp ) - 1 ;
                 } // else
             } // if
-            else if ( peek == '\n' )
-                throw new Exception( NO_CLOSING_QUOTE, mLine, mColumn + 1 );
+            else if ( peek == '\n' ) {
+                throw new Exception( NO_CLOSING_QUOTE, mLine, mColumn + 1 ) ;
+            } // else if
             else {
-                scanf( "%c", &ch );
-                mColumn ++;
-                tmp[i] = ch;
+                scanf( "%c", &ch ) ;
+                mColumn++ ;
+                tmp[i] = ch ;
             } // else 
                 
-            peek = cin.peek();
-            i ++;
+            peek = cin.peek() ;
+            i++ ;
         } // while
 
         // maybe EOF or peek( '"' )
-        if ( peek == EOF ) // ERROR
-            throw new Exception( NO_CLOSING_QUOTE, mLine, mColumn + 1 );
+        if ( peek == EOF ) { // ERROR
+            throw new Exception( NO_CLOSING_QUOTE, mLine, mColumn + 1 ) ;
+        } // if
         else {
-            scanf( "%c", &ch ); // get '"'
-            mColumn ++;
-            i = strlen( tmp );
-            tmp[i] = ch;
-            token.name = CharToString( tmp );
-            token.type = STRING;
+            scanf( "%c", &ch ) ; // get '"'
+            mColumn++ ;
+            i = strlen( tmp ) ;
+            tmp[i] = ch ;
+            token.name = CharToString( tmp ) ;
+            token.type = STRING ;
         } // else
     } // else
 } // Scanner::GetQuote()
 
 void Scanner::GetIntOrFloat( Token & token ) {
-    int peek, i = 0;
-    char ch = '\0', tmp[80] = { '\0' };
+    int peek ;
+    int i = 0 ;
+    char ch = '\0' ;
+    char tmp[80] = { '\0' } ;
 
-    peek = cin.peek();
+    peek = cin.peek() ;
     if ( peek == '.' ) { // maybe float or symbol
-        scanf( "%c", &ch ); // get '.'
-        mColumn ++;
-        token.column = mColumn;
-        token.line = mLine;
-        tmp[0] = ch; // save '.'
-        i ++;
-        peek = cin.peek();
+        scanf( "%c", &ch ) ; // get '.'
+        mColumn++ ;
+        token.column = mColumn ;
+        token.line = mLine ;
+        tmp[0] = ch ; // save '.'
+        i++ ;
+        peek = cin.peek() ;
         if ( peek == ' ' || peek == '\t' || peek == '\n' ||
              peek == '(' || peek == ')' || peek == EOF ||
              peek == '\'' || peek == '"' || peek == ';' ) {
             // DOT
-            token.name = CharToString( tmp );
-            token.type = DOT;
-            return;
+            token.name = CharToString( tmp ) ;
+            token.type = DOT ;
+            return ;
         } // if
-        else if ( peek < '0' || peek > '9' )
+        else if ( peek < '0' || peek > '9' ) {
             // not '0' ~ '9'
-            GetSymbol( token, tmp );
-        else // '0' ~ '9'
-            GetFloat( token, tmp );
+            GetSymbol( token, tmp ) ;
+        } // else if
+        else { 
+            // '0' ~ '9'
+            GetFloat( token, tmp ) ;
+        } // else
 
     } // if
     else if ( peek == '+' || peek == '-' ) {
-        scanf( "%c", &ch ); // get '+' or '-'
-        mColumn++;
-        token.column = mColumn;
-        token.line = mLine;
-        tmp[0] = ch; // save '+' or '-'
-        i ++;
-        peek = cin.peek();
+        scanf( "%c", &ch ) ; // get '+' or '-'
+        mColumn++ ;
+        token.column = mColumn ;
+        token.line = mLine ;
+        tmp[0] = ch ; // save '+' or '-'
+        i++ ;
+        peek = cin.peek() ;
         if ( peek == ' ' || peek == '\t' || peek == '\n' ||
              peek == '(' || peek == ')' || peek == EOF ||
              peek == '\'' || peek == '"' || peek == ';' ) {
-            token.name = CharToString( tmp );
-            token.type = SYMBOL;
-            return;
+            token.name = CharToString( tmp ) ;
+            token.type = SYMBOL ;
+            return ;
         } // if
         else if ( peek == '.' ) {
-            scanf( "%c", &ch ); // get '.'
-            tmp[1] = ch;
-            mColumn ++;
-            peek = cin.peek();
+            scanf( "%c", &ch ) ; // get '.'
+            tmp[1] = ch ;
+            mColumn++ ;
+            peek = cin.peek() ;
             if ( peek == ' ' || peek == '\t' || peek == '\n' ||
                  peek == '(' || peek == ')' || peek == EOF ||
                  peek == '\'' || peek == '"' || peek == ';' ) {
                 // DOT
-                token.name = CharToString( tmp );
-                token.type = SYMBOL;
-                return;
+                token.name = CharToString( tmp ) ;
+                token.type = SYMBOL ;
+                return ;
             } // if
-            else if ( peek < '0' || peek > '9' )
-                GetSymbol( token, tmp );
-            else // '0' ~ '9'
-                GetFloat( token, tmp );
+            else if ( peek < '0' || peek > '9' ) {
+                GetSymbol( token, tmp ) ;
+            } // else if
+            else {
+                // '0' ~ '9'
+                GetFloat( token, tmp ) ;
+            } // else
 
         } // else if
-        else if ( peek < '0' || peek > '9' )
+        else if ( peek < '0' || peek > '9' ) {
             // not '0' ~ '9'
-            GetSymbol( token, tmp );
-        else // '0' ~ '9'
-            GetInt( token, tmp );
+            GetSymbol( token, tmp ) ;
+        } // else if
+        else {
+            // '0' ~ '9'
+            GetInt( token, tmp ) ;
+        } // else
 
     } // else if
-    else  // '0' ~ '9'
-        GetInt( token, tmp ); // int or float
+    else  {
+        // '0' ~ '9'
+        GetInt( token, tmp ) ; // int or float
+    } // else
+
 } // Scanner::GetIntOrFloat()
 
 void Scanner::GetFloat( Token & token, char tmp[80] ) {
     // 已經get '.'
     char ch = '\0';
     int peek;
-    int i = strlen( tmp );
+    int i = strlen( tmp ) ;
 
-    peek = cin.peek();
+    peek = cin.peek() ;
     if ( peek == ' ' || peek == '\t' || peek == '\n' ||
          peek == '(' || peek == ')' ||
          peek == '\'' || peek == '"' || peek == ';' ) {
-        token.name = CharToString( tmp );
-        token.type = FLOAT;
-        return;
+        token.name = CharToString( tmp ) ;
+        token.type = FLOAT ;
+        return ;
     } // if 
     else if ( peek > '9' ) {
-        GetSymbol( token, tmp );
-        return;
+        GetSymbol( token, tmp ) ;
+        return ;
     } // else if
     else if ( peek < '0' ) {
         GetSymbol( token, tmp );
@@ -645,54 +695,57 @@ void Scanner::GetGarbage() {
         scanf( "%c", &ch );
         peek = cin.peek();
 
-        if ( peek == EOF )
-            return;
+        if ( peek == EOF ) {
+            return ;
+        } // if
+
     } // while
 
     scanf( "%c", &ch ); // get '\n'
 } // Scanner::GetGarbage()
 
 void Scanner::Initial() {
-    char ch;
-    int peek;
+    char ch ;
+    int peek ;
 
-    peek = cin.peek();
+    peek = cin.peek() ;
     while ( peek == '\t' || peek == ' ' ) {
         scanf( "%c", &ch );
-        mColumn ++;
-        peek = cin.peek();
+        mColumn++ ;
+        peek = cin.peek() ;
     } // while
         
 } // Scanner::Initial()
 
 string Scanner::CharToString( char ch[80] ) {
     string s = "";
-    for ( int i = 0; ch[i] != '\0'; i ++ )
-        s = s + ch[i];
+    for ( int i = 0 ; ch[i] != '\0' ; i ++ ) {
+        s = s + ch[i] ;
+    } // for
 
-    return s;
+    return s ;
 } // Scanner::CharToString
 
 // Parser
 void Parser::InitialToken() {
-    mPeekToken.name = "";
-    mPeekToken.column = 0;
-    mPeekToken.line = 0;
-    mPeekToken.type = INITIAL;
+    mPeekToken.name = "" ;
+    mPeekToken.column = 0 ;
+    mPeekToken.line = 0 ;
+    mPeekToken.type = INITIAL ;
 } // Parser:: InitialToken()
 
 void Parser::InitialScheme() {
-    char ch = '\0';
-    int peek = 0;
+    char ch = '\0' ;
+    int peek = 0 ;
 
-    mScanner.mColumn = 0;
-    mScanner.mLine = 1;
+    mScanner.mColumn = 0 ;
+    mScanner.mLine = 1 ;
 
-    peek = cin.peek();
+    peek = cin.peek() ;
     if ( peek == '\t' || peek == ' ' )
-        mScanner.Initial();
+        mScanner.Initial() ;
 
-    peek = cin.peek();
+    peek = cin.peek() ;
     if ( peek == ';' ) {
         mScanner.Gettoken( mPeekToken );
         mScanner.mColumn = 0;
@@ -741,7 +794,6 @@ void Parser::ReadExp() {
 
         return;
     } // if
-
     else if ( type == LEFT_PAREN ) {
         GetTerminal();
         mTokenList.push_back( mCurToken ); // get '('
@@ -777,16 +829,13 @@ void Parser::ReadExp() {
             throw new Exception( mPeekToken, UNEXPECTED_RIGHT_PAREN );
         
     } // else if
-
     else if ( type == QUOTE ) {
         GetTerminal();
         mTokenList.push_back( mCurToken ); // get '\''
         ReadExp();
     } // else if
-
     else if ( type == END_OF_LINE )
         throw new Exception( ERROR_EOF, 0, 0 );
-
     else
         throw new Exception( mPeekToken, UNEXPEXTED_ATOM_OR_LEFT_PAREN );
 
@@ -927,7 +976,7 @@ void Parser::AddNewLeaf( Node & cur, int & dot_paren, int & left_paren, bool & e
 
                 AddNewLeaf( cur -> right, dot_paren, left_paren, erase ); // get ')'
             } // else 
-        } // else 
+        } // if 
     } // else if
     else if ( term.mType == PAREN_QUOTE ) {
         cur -> left = SetLeaf( term );
